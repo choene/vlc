@@ -4,6 +4,8 @@ libdummy_plugin_la_SOURCES = control/dummy.c control/intromsg.h
 libgestures_plugin_la_SOURCES = control/gestures.c
 libhotkeys_plugin_la_SOURCES = control/hotkeys.c
 libhotkeys_plugin_la_LIBADD = $(LIBM)
+libheadtracking_plugin_la_SOURCES = control/headtracking.c
+libheadtracking_plugin_la_LIBADD = $(LIBM) -lhidapi-hidraw
 libnetsync_plugin_la_SOURCES = control/netsync.c
 libnetsync_plugin_la_LIBADD = $(SOCKET_LIBS)
 liboldrc_plugin_la_SOURCES = control/oldrc.c control/intromsg.h
@@ -13,6 +15,7 @@ control_LTLIBRARIES = \
 	libdummy_plugin.la \
 	libgestures_plugin.la \
 	libhotkeys_plugin.la \
+	libheadtracking_plugin.la \
 	libnetsync_plugin.la \
 	liboldrc_plugin.la
 
