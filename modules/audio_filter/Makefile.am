@@ -30,6 +30,16 @@ libspatializer_plugin_la_SOURCES = \
 	audio_filter/spatializer/spatializer.cpp
 libspatializer_plugin_la_LIBADD = $(LIBM)
 
+libsofalizer_plugin_la_SOURCES = \
+        audio_filter/sofalizer/sofalizer.c \
+        audio_filter/sofalizer/fft/kiss_fft.c \
+        audio_filter/sofalizer/resampling/src_sinc.c \
+        audio_filter/sofalizer/resampling/samplerate.c \
+        audio_filter/sofalizer/resampling/src_linear.c \
+        audio_filter/sofalizer/resampling/src_zoh.c
+libsofalizer_plugin_la_LIBADD = $(LIBM) -lnetcdf
+
+
 audio_filter_LTLIBRARIES = \
 	libaudiobargraph_a_plugin.la \
 	libchorus_flanger_plugin.la \
@@ -41,7 +51,8 @@ audio_filter_LTLIBRARIES = \
 	libparam_eq_plugin.la \
 	libscaletempo_plugin.la \
 	libspatializer_plugin.la \
-	libstereo_widen_plugin.la
+	libstereo_widen_plugin.la \
+	libsofalizer_plugin.la
 
 # Channel mixers
 libdolby_surround_decoder_plugin_la_SOURCES = \

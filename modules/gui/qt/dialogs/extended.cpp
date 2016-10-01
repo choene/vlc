@@ -70,6 +70,9 @@ ExtendedDialog::ExtendedDialog( intf_thread_t *_p_intf )
     audioTab->addTab( spatial, qtr( "Spatializer" ) );
     audioLayout->addWidget( audioTab );
 
+    Sofalizer *sofalizer = new Sofalizer( p_intf, audioTab );
+    audioTab->addTab( sofalizer, qtr( "SOFAlizer" ) );
+
     mainTabW->insertTab( AUDIO_TAB, audioWidget, qtr( "Audio Effects" ) );
 
     /* Video Effects */
@@ -103,6 +106,7 @@ ExtendedDialog::ExtendedDialog( intf_thread_t *_p_intf )
     CONNECT( writeChangesBox, toggled(bool), compres, setSaveToConfig(bool) );
     CONNECT( writeChangesBox, toggled(bool), spatial, setSaveToConfig(bool) );
     CONNECT( writeChangesBox, toggled(bool), equal, setSaveToConfig(bool) );
+    CONNECT( writeChangesBox, toggled(bool), sofalizer, setSaveToConfig(bool) );
     CONNECT( mainTabW, currentChanged(int), this, currentTabChanged(int) );
 
     QDialogButtonBox *closeButtonBox = new QDialogButtonBox( Qt::Horizontal, this );

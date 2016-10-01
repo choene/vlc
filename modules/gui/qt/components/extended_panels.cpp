@@ -1420,6 +1420,27 @@ Spatializer::Spatializer( intf_thread_t *p_intf, QWidget *parent )
     build();
 }
 
+/**********************************************************************
+ * SOFAlizer
+ **********************************************************************/
+
+Sofalizer::Sofalizer( intf_thread_t *p_intf, QWidget *parent )
+    : AudioFilterControlWidget( p_intf, parent, "sofalizer" )
+{
+    i_smallfont = -1;
+    const FilterSliderData::slider_data_t a[6] =
+    {
+        { "sofalizer-select",   qtr("Select File"),    "", 1.0f, 3.0f, 1.0f, 1.0f, 1.0f },
+        { "sofalizer-gain",   qtr("Gain"),    qtr("dB"), -20.0f, 40.0f, 0.0f, 1.0f, 1.0f },
+        { "sofalizer-switch",   qtr("Switch"),    "", 0.0f , 4.0f, 0.0f, 1.0f, 1.0f },
+        { "sofalizer-rotation",  qtr("Rotation"),   qtr("deg"), -180.0f, 180.0f, 0.0f, 1.0f, 1.0f },
+        { "sofalizer-elevation",  qtr("Elevation"),   qtr("deg"), -90, 90, 0, 1.0f, 1.0f },
+        { "sofalizer-radius",  qtr("Radius"),   qtr("m"), 0.1f , 2.1f, 1.0f, 0.1f, 1.0f },
+    };
+    for( int i=0; i<6 ;i++ ) controls.append( a[i] );
+    build();
+}
+
 #include <QToolButton>
 #include <QGridLayout>
 

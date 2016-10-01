@@ -204,6 +204,14 @@ public:
     Spatializer( intf_thread_t *, QWidget * );
 };
 
+class Sofalizer: public AudioFilterControlWidget
+{
+     Q_OBJECT
+
+public:
+     Sofalizer( intf_thread_t *, QWidget * );
+};
+
 class SyncWidget : public QWidget
 {
     Q_OBJECT
