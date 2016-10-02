@@ -40,9 +40,10 @@
  *****************************************************************************/
 struct intf_sys_t
 {
-	hid_device *handle;
+	hid_device *hidHandle;
 	vlc_timer_t discoveryTimer;
         libvlc_int_t* libvlc;
+	struct hid_device_info *hidList;
 };
 
 #if 0
@@ -79,20 +80,86 @@ static int  ActionEvent( vlc_object_t *, char const *,
 vlc_module_begin ()
     set_shortname( N_("Headtracking") )
     set_description( N_("Headtracking interface") )
-    set_capability( "interface", 10 )
+    set_capability( "interface", 0 )
     set_callbacks( Open, Close )
     set_category( CAT_INTERFACE )
     set_subcategory( SUBCAT_INTERFACE_CONTROL )
 vlc_module_end ()
 
 /*****************************************************************************
- * Module descriptor
+ * Look for proper HID devices
  *****************************************************************************/
+
+static void hidVerify(struct hid_device_info *hid)
+{
+	unsigned char buf[65];
+	int res,i ;
+
+	// Open the device using the VID, PID,
+	// and optionally the Serial number.
+	hid_device *handle = hid_open(hid->vendor_id, hid->product_id, NULL);
+	if(handle == NULL)
+		return;
+
+// Send a Feature Report to the device
+	buf[0] = 0x2; // First byte is report number
+	buf[1] = 0xa0;
+	buf[2] = 0x0a;
+	res = hid_send_feature_report(handle, buf, 17);
+
+	printf("HALLO\n");
+
+	// Read a Feature Report from the device
+	buf[0] = 0x2;
+	res = hid_get_feature_report(handle, buf, sizeof(buf));
+
+	// Print out the returned buffer.
+	printf("Feature Report\n   ");
+	for (i = 0; i < res; i++)
+		printf("%02hhx ", buf[i]);
+	printf("\n");
+
+
+	hid_close(handle);
+}
+
 static void hidDiscovery(void *p)
 {
+	struct hid_device_info *list, *i, *j;
 	intf_sys_t *p_sys = (intf_sys_t*)p;
-    msg_Info( p_sys->libvlc, "looking for HID devices" );
+
+	msg_Info( p_sys->libvlc, "looking for HID devices" );
+
+
+	list = hid_enumerate(0,0);
+	if(list == NULL)
+		return;
+
+	for(i = list;i != NULL; i = i->next) {
+		int found = 0;
+		for(j = p_sys->hidList; j!=NULL; j = j->next) {
+			if(j->vendor_id == i->vendor_id &&
+			   j->product_id == i->product_id &&
+			   !wcscmp(j->serial_number,i->serial_number)) {
+				found = 1;
+				break;
+			}
+		}
+		if(!found) {
+			msg_Info( p_sys->libvlc, " device %04X:%04X %ls %ls %ls",
+				i->vendor_id, i->product_id, 
+				i->manufacturer_string, i->product_string,
+				i->serial_number);
+			hidVerify(i);
+			
+		}
+
+	}
+	
+	hid_free_enumeration(p_sys->hidList);
+	p_sys->hidList = list;
 }
+
 
 /*****************************************************************************
  * Open: initialize headtracking interface
@@ -117,6 +184,8 @@ static int Open( vlc_object_t *p_this )
     p_intf->p_sys = p_sys;
 
     p_sys->libvlc = p_this->obj.libvlc;
+    p_sys->hidList = NULL;
+    p_sys->hidHandle = NULL;
 
 	/* start HID discovery timer */
 	res = vlc_timer_create(&p_sys->discoveryTimer, &hidDiscovery, p_sys);
@@ -147,6 +216,8 @@ static void Close( vlc_object_t *p_this )
     /* destroy timer */
     vlc_timer_destroy(p_sys->discoveryTimer);
 
+    if(p_sys->hidList)
+	hid_free_enumeration(p_sys->hidList);
     /* Destroy structure */
     free( p_sys );
 
