@@ -238,6 +238,7 @@ int main( int i_argc, const char *ppsz_argv[] )
 #if !defined (__OS2__)
     libvlc_add_intf (vlc, "globalhotkeys,none");
 #endif
+    libvlc_add_intf (vlc, "headtracking,none");
 #ifdef HAVE_DBUS
     libvlc_add_intf (vlc, "dbus,none");
 #endif

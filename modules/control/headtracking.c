@@ -41,8 +41,27 @@
 struct intf_sys_t
 {
 	hid_device *handle;
+	vlc_timer_t discoveryTimer;
+        libvlc_int_t* libvlc;
 };
 
+#if 0
+static int vlc_key_to_action (vlc_object_t *obj, const char *varname,
+                              vlc_value_t prevkey, vlc_value_t curkey, void *d)
+{
+    void *const *map = d;
+    const struct mapping **pent;
+    uint32_t keycode = curkey.i_int;
+
+    pent = tfind (&keycode, map, keycmp);
+    if (pent == NULL)
+        return VLC_SUCCESS;
+
+    (void) varname;
+    (void) prevkey;
+    return var_SetInteger (obj, "key-action", (*pent)->action);
+}
+#endif 
 
 /*****************************************************************************
  * Local prototypes
@@ -60,11 +79,20 @@ static int  ActionEvent( vlc_object_t *, char const *,
 vlc_module_begin ()
     set_shortname( N_("Headtracking") )
     set_description( N_("Headtracking interface") )
-    set_capability( "interface", 0 )
+    set_capability( "interface", 10 )
     set_callbacks( Open, Close )
     set_category( CAT_INTERFACE )
-    set_subcategory( SUBCAT_INTERFACE_HOTKEYS )
+    set_subcategory( SUBCAT_INTERFACE_CONTROL )
 vlc_module_end ()
+
+/*****************************************************************************
+ * Module descriptor
+ *****************************************************************************/
+static void hidDiscovery(void *p)
+{
+	intf_sys_t *p_sys = (intf_sys_t*)p;
+    msg_Info( p_sys->libvlc, "looking for HID devices" );
+}
 
 /*****************************************************************************
  * Open: initialize headtracking interface
@@ -75,21 +103,33 @@ static int Open( vlc_object_t *p_this )
     intf_sys_t *p_sys;
     int res;
 
-// Initialize the hidapi library
+    msg_Info( p_intf, "using the headtracking interface module..." );
+
+	/* Initialize the hidapi library */
     res = hid_init();
     if(res != 0)
 	return VLC_EGENERIC;
 
-
+	/* get memory for structure */
     p_sys = malloc( sizeof( intf_sys_t ) );
     if( !p_sys )
         return VLC_ENOMEM;
-
     p_intf->p_sys = p_sys;
 
-    var_AddCallback( p_intf->obj.libvlc, "key-action", ActionEvent, p_intf );
+    p_sys->libvlc = p_this->obj.libvlc;
 
-    msg_Info( p_intf, "using the headtracking interface module..." );
+	/* start HID discovery timer */
+	res = vlc_timer_create(&p_sys->discoveryTimer, &hidDiscovery, p_sys);
+	if(res != 0) 
+		return VLC_EGENERIC;
+
+	vlc_timer_schedule(p_sys->discoveryTimer, false, 1000000, 5000000);
+
+	/* create notification object */
+    var_Create (p_this->obj.libvlc, "head-rotation", VLC_VAR_ADDRESS);
+    var_AddCallback( p_intf->obj.libvlc, "head-rotation", ActionEvent, p_intf );
+
+    msg_Info( p_intf, "done" );
 
     return VLC_SUCCESS;
 }
@@ -102,7 +142,10 @@ static void Close( vlc_object_t *p_this )
     intf_thread_t *p_intf = (intf_thread_t *)p_this;
     intf_sys_t *p_sys = p_intf->p_sys;
 
-    var_DelCallback( p_intf->obj.libvlc, "key-action", ActionEvent, p_intf );
+    var_DelCallback( p_intf->obj.libvlc, "head-rotation", ActionEvent, p_intf );
+
+    /* destroy timer */
+    vlc_timer_destroy(p_sys->discoveryTimer);
 
     /* Destroy structure */
     free( p_sys );
