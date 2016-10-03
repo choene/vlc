@@ -1,25 +1,24 @@
 /*****************************************************************************
  * headtracking.c: headtracking interface plugin
  *****************************************************************************
- * Copyright (C) 2016 Symonics
+ * Copyright (C) 2016 Christian Hoene, Symonics GmbH
  * $Id$
  *
  * Authors: Christian Hoene <christian.hoene@symonics.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License version 2.1 as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
- *****************************************************************************/
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation Inc. 59 Temple Place, Suite 330, Boston MA 02111-1307 USA
+ */
 
 /*****************************************************************************
  * Preamble
@@ -34,16 +33,30 @@
 #include <vlc_plugin.h>
 #include <vlc_interface.h>
 #include <hidapi/hidapi.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <linux/joystick.h>
+#include <string.h>
+
 
 /*****************************************************************************
  * intf_sys_t: description and status of FB interface
  *****************************************************************************/
 struct intf_sys_t
 {
-	hid_device *hidHandle;
-	vlc_timer_t discoveryTimer;
         libvlc_int_t* libvlc;
+
+	vlc_timer_t discoveryTimer;
+	vlc_thread_t queryThread;
+
+	hid_device *hidHandle;
 	struct hid_device_info *hidList;
+
+	int jsDevice;
+
+	int running;
 };
 
 #if 0
@@ -90,28 +103,24 @@ vlc_module_end ()
  * Look for proper HID devices
  *****************************************************************************/
 
-static void hidVerify(struct hid_device_info *hid)
+/* TODO, on Ubuntu 14.04, hid_get_feature_report does not work proper */
+
+static void hidVerify(intf_sys_t *p_sys, struct hid_device_info *hid)
 {
 	unsigned char buf[65];
-	int res,i ;
+	int res,i;
 
 	// Open the device using the VID, PID,
 	// and optionally the Serial number.
-	hid_device *handle = hid_open(hid->vendor_id, hid->product_id, NULL);
+	hid_device *handle = hid_open(hid->vendor_id, hid->product_id, hid->serial_number);
 	if(handle == NULL)
 		return;
 
-// Send a Feature Report to the device
-	buf[0] = 0x2; // First byte is report number
-	buf[1] = 0xa0;
-	buf[2] = 0x0a;
-	res = hid_send_feature_report(handle, buf, 17);
-
-	printf("HALLO\n");
-
 	// Read a Feature Report from the device
-	buf[0] = 0x2;
+	buf[0] = 2;
 	res = hid_get_feature_report(handle, buf, sizeof(buf));
+	if(res<0) 
+		printf("Feature Error %ls\n",hid_error(handle));
 
 	// Print out the returned buffer.
 	printf("Feature Report\n   ");
@@ -119,38 +128,34 @@ static void hidVerify(struct hid_device_info *hid)
 		printf("%02hhx ", buf[i]);
 	printf("\n");
 
-
+	/* TODO analyse feature report */
 	hid_close(handle);
 }
 
-static void hidDiscovery(void *p)
+static int hidDiscovery(intf_sys_t *p_sys)
 {
 	struct hid_device_info *list, *i, *j;
-	intf_sys_t *p_sys = (intf_sys_t*)p;
-
-	msg_Info( p_sys->libvlc, "looking for HID devices" );
-
 
 	list = hid_enumerate(0,0);
 	if(list == NULL)
-		return;
+		return 0;
 
 	for(i = list;i != NULL; i = i->next) {
 		int found = 0;
 		for(j = p_sys->hidList; j!=NULL; j = j->next) {
 			if(j->vendor_id == i->vendor_id &&
 			   j->product_id == i->product_id &&
-			   !wcscmp(j->serial_number,i->serial_number)) {
+			   (j->serial_number==NULL || i->serial_number==NULL || !wcscmp(j->serial_number,i->serial_number))) {
 				found = 1;
 				break;
 			}
 		}
 		if(!found) {
-			msg_Info( p_sys->libvlc, " device %04X:%04X %ls %ls %ls",
+			msg_Info( p_sys->libvlc, "HID device %04X:%04X %ls %ls %ls",
 				i->vendor_id, i->product_id, 
 				i->manufacturer_string, i->product_string,
 				i->serial_number);
-			hidVerify(i);
+//			hidVerify(p_sys, i);
 			
 		}
 
@@ -158,6 +163,98 @@ static void hidDiscovery(void *p)
 	
 	hid_free_enumeration(p_sys->hidList);
 	p_sys->hidList = list;
+
+	return 0; // do not find any device yet
+}
+
+static int jsDiscovery(intf_sys_t *p_sys)
+{
+	char filename[20];
+	int file,i;
+
+	for(i=0;i<32;i++) {
+		sprintf(filename,"/dev/input/js%d",i);
+		file = open(filename, O_RDONLY);
+		if(file >= 0)
+			break;
+	}
+	if(file == -1)
+		return 0;
+
+	p_sys->jsDevice = file;
+	msg_Info( p_sys->libvlc, "found joystick at %s", filename);
+
+	return 1;
+}
+
+static int jsQuery(intf_sys_t *p_sys)
+{
+	double axes[3] = { 0,0,0 };
+
+	if(p_sys->jsDevice >= 0) {
+
+		/* at start up, all events are fired */
+		struct js_event event[10];
+		int n;
+		int fire=0;
+
+		/* blocking read, TODO: check for thread cancel */
+		n = read(p_sys->jsDevice, (void*)event, sizeof(event));
+		if(n < 0) {
+			msg_Info(p_sys->libvlc, "joystick error %d %s",errno,strerror(errno));
+			close(p_sys->jsDevice);
+			p_sys->jsDevice = -1;
+			return -1;
+		}
+		
+		for(struct js_event *e = event;n > 0; e++,n-=sizeof(*e)) {
+			if((e->type & ~JS_EVENT_INIT) == JS_EVENT_AXIS && e->number>=0 && e->number<3) {
+				axes[e->number] = e->value * (180. / 32767.);
+				fire++;
+			}
+#if DEBUG
+			else
+				msg_Info(p_sys->libvlc, "unknown js event %9d %04X %02X %d %p\n", e->time, e->value, e->type, e->number, axes);
+#endif
+		}
+		if(fire) {
+			var_SetAddress(p_sys->libvlc, "head-rotation", axes);
+		}
+	}
+	return 1;	
+}
+
+static void* query(void *p)
+{
+	volatile intf_sys_t *p_sys = (intf_sys_t*)p;
+#ifdef DEBUG
+	msg_Info( p_sys->libvlc, "query thread started");		
+#endif
+
+	while(p_sys->running) {
+		vlc_testcancel();
+
+		
+		if(jsQuery(p_sys)<0)
+			break;
+
+	}
+
+	p_sys->running = 0;
+}
+
+static void discovery(void *p)
+{
+	intf_sys_t *p_sys = (intf_sys_t*)p;
+
+	if(p_sys->running)
+		return;
+
+	if(!hidDiscovery(p_sys) && !jsDiscovery(p_sys))
+		return;
+
+	p_sys->running = 1;
+	vlc_clone(&p_sys->queryThread, &query, p_sys, VLC_THREAD_PRIORITY_INPUT);
 }
 
 
@@ -186,17 +283,19 @@ static int Open( vlc_object_t *p_this )
     p_sys->libvlc = p_this->obj.libvlc;
     p_sys->hidList = NULL;
     p_sys->hidHandle = NULL;
+    p_sys->jsDevice = -1;
+    p_sys->running = 0;
 
 	/* start HID discovery timer */
-	res = vlc_timer_create(&p_sys->discoveryTimer, &hidDiscovery, p_sys);
+	res = vlc_timer_create(&p_sys->discoveryTimer, &discovery, p_sys);
 	if(res != 0) 
 		return VLC_EGENERIC;
 
 	vlc_timer_schedule(p_sys->discoveryTimer, false, 1000000, 5000000);
 
 	/* create notification object */
-    var_Create (p_this->obj.libvlc, "head-rotation", VLC_VAR_ADDRESS);
-    var_AddCallback( p_intf->obj.libvlc, "head-rotation", ActionEvent, p_intf );
+    var_Create (p_sys->libvlc, "head-rotation", VLC_VAR_ADDRESS);
+    var_AddCallback(p_sys->libvlc, "head-rotation", ActionEvent, p_sys );
 
     msg_Info( p_intf, "done" );
 
@@ -212,6 +311,12 @@ static void Close( vlc_object_t *p_this )
     intf_sys_t *p_sys = p_intf->p_sys;
 
     var_DelCallback( p_intf->obj.libvlc, "head-rotation", ActionEvent, p_intf );
+
+    /* destroy thread */
+    if(p_sys->running) {
+	vlc_cancel(p_sys->queryThread);
+	vlc_join(p_sys->queryThread, NULL);
+    }
 
     /* destroy timer */
     vlc_timer_destroy(p_sys->discoveryTimer);
@@ -229,34 +334,13 @@ static void Close( vlc_object_t *p_this )
  * ActionEvent: callback for hotkey actions
  *****************************************************************************/
 
-static int PutAction( intf_thread_t *p_intf, int i_action )
-{
-    intf_sys_t *p_sys = p_intf->p_sys;
-    playlist_t *p_playlist = pl_Get( p_intf );
-
-#if 0
-    switch( i_action )
-    {
-        /* Libvlc / interface actions */
-        case ACTIONID_QUIT:
-        case ACTIONID_INTF_TOGGLE_FSC:
-        case ACTIONID_INTF_HIDE:
-            break;
-    }
-#endif
-    return VLC_SUCCESS;
-}
-
 static int ActionEvent( vlc_object_t *libvlc, char const *psz_var,
                         vlc_value_t oldval, vlc_value_t newval, void *p_data )
 {
-    intf_thread_t *p_intf = (intf_thread_t *)p_data;
-
-    (void)libvlc;
-    (void)psz_var;
-    (void)oldval;
-
-    return PutAction( p_intf, newval.i_int );
+	intf_sys_t *p_sys = (intf_sys_t*)p_data;
+	double *axes = (double*) newval.p_address;
+	 msg_Info(  libvlc, "%s yaw %4.0f pitch %4.0f roll %4.0f", psz_var, axes[0], axes[1], axes[2]);
+	return VLC_SUCCESS;
 }
 
 
