@@ -2320,7 +2320,7 @@ AC_ARG_ENABLE(avcodec,
 AS_IF([test "${enable_avcodec}" != "no"], [
   dnl We need >=57.16.0 from libav or >=57.37.100 from ffmpeg
   case "${avfork}" in
-    libav) av_codec_ver="57.16.0" ;;
+    libav) av_codec_ver="56.0.0" ;;
     ffmpeg) av_codec_ver="57.37.100" ;;
     *) AC_MSG_ERROR([Missing libav or FFmpeg])
   esac

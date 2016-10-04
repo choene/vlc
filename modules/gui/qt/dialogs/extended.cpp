@@ -71,7 +71,7 @@ ExtendedDialog::ExtendedDialog( intf_thread_t *_p_intf )
     audioLayout->addWidget( audioTab );
 
     Sofalizer *sofalizer = new Sofalizer( p_intf, audioTab );
-    audioTab->addTab( sofalizer, qtr( "SOFAlizer" ) );
+    audioTab->addTab( sofalizer, qtr( "3D Audio" ) );
 
     mainTabW->insertTab( AUDIO_TAB, audioWidget, qtr( "Audio Effects" ) );
 

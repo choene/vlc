@@ -13,11 +13,13 @@ RUN apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	git libtool build-essential pkg-config autoconf
 
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y upgrade
+
 # From apt-rdepends --build-depends --follow=DEPENDS vlc
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	autopoint debhelper dh-autoreconf dh-buildinfo gettext liba52-0.7.4-dev \
 	libaa1-dev libasound2-dev libass-dev libavahi-client-dev libavc1394-dev \
-	libavcodec-dev libavformat-dev libbluray-dev libcaca-dev libcddb2-dev \
+	libbluray-dev libcaca-dev libcddb2-dev \
 	libcdio-dev libchromaprint-dev libcrystalhd-dev libdbus-1-dev \
 	libdc1394-22-dev libdca-dev libdirectfb-dev libdvbpsi-dev \
 	libdvdnav-dev libdvdread-dev libegl1-mesa-dev libfaad-dev libflac-dev \
@@ -34,7 +36,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	libtheora-dev libtwolame-dev libudev-dev libupnp-dev libv4l-dev libva-dev \
 	libvcdinfo-dev libvdpau-dev libvncserver-dev libvorbis-dev libx11-dev \
 	libx264-dev libxcb-composite0-dev libxcb-keysyms1-dev libxcb-randr0-dev \
-	libxcb-shm0-dev libxcb-xv0-dev libxcb1-dev libxext-dev libxinerama-dev \
+	libxcb-shm0-dev libxcb-xv0-dev libxcb1-dev libxext-dev \
 	libxml2-dev libxpm-dev libzvbi-dev lua5.2 pkg-config zlib1g-dev
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -45,6 +47,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	subversion yasm cvs cmake ragel
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+	libhidapi-dev
 # 
 # in vlc, you can run:
 #% cd contrib

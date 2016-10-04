@@ -657,6 +657,24 @@ static int ElevationCallback( vlc_object_t *UNUSED(p_this), char const *psz_var,
     return VLC_SUCCESS;
 }
 
+static int HeadRotationCallback(vlc_object_t* UNUSED(p_this), char const *psz_var,
+                          vlc_value_t oldval, vlc_value_t newval, void *pf_data)
+{
+    VLC_UNUSED(psz_var); VLC_UNUSED(oldval);
+    filter_t *p_filter = (filter_t *)pf_data;
+#if 0
+    filter_sys_t *p_sys = p_filter->p_sys;
+    float f_temp= (int) (- newval.f_float + 720 ) % 360  ;
+    vlc_mutex_lock( &p_sys->lock );
+    p_sys->f_rotation = f_temp ;
+    vlc_mutex_unlock( &p_sys->lock );
+    /* re-load IRs based on new GUI settings: */
+    LoadData( p_filter, f_temp, p_sys->f_elevation, p_sys->f_radius );
+#endif
+    msg_Info( p_filter, "New head_rotation"  );
+    return VLC_SUCCESS;
+}
+
 static int RadiusCallback( vlc_object_t *UNUSED(p_this), char const *psz_var,
                           vlc_value_t oldval, vlc_value_t newval, void *pf_data )
 {
@@ -1022,6 +1040,8 @@ static int Open( vlc_object_t *p_this )
     var_AddCallback( p_out, "sofalizer-switch", SwitchCallback, p_filter );
     var_AddCallback( p_out, "sofalizer-select", SelectCallback, p_filter );
     var_AddCallback( p_out, "sofalizer-radius", RadiusCallback, p_filter );
+
+    var_AddCallback( p_filter->obj.libvlc, "head-rotation", HeadRotationCallback, p_filter );
 
     return VLC_SUCCESS;
 }
@@ -1613,6 +1633,7 @@ static void Close( vlc_object_t *p_this )
     var_DelCallback( p_out, "sofalizer-switch", SwitchCallback, p_filter );
     var_DelCallback( p_out, "sofalizer-select", SelectCallback, p_filter );
     var_DelCallback( p_out, "sofalizer-radius", RadiusCallback, p_filter );
+    var_DelCallback( p_filter->obj.libvlc, "head-rotation", HeadRotationCallback, p_filter );
 
     vlc_mutex_destroy( &p_sys->lock ); /* get rid of mutex lock */
 
