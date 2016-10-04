@@ -57,6 +57,8 @@ struct intf_sys_t
 	int jsDevice;
 
 	int running;
+
+	double axes[3];
 };
 
 #if 0
@@ -189,8 +191,6 @@ static int jsDiscovery(intf_sys_t *p_sys)
 
 static int jsQuery(intf_sys_t *p_sys)
 {
-	double axes[3] = { 0,0,0 };
-
 	if(p_sys->jsDevice >= 0) {
 
 		/* at start up, all events are fired */
@@ -208,20 +208,20 @@ static int jsQuery(intf_sys_t *p_sys)
 		}
 		
 		for(struct js_event *e = event;n > 0; e++,n-=sizeof(*e)) {
-			if((e->type & ~JS_EVENT_INIT) == JS_EVENT_AXIS && e->number>=0 && e->number<3) {
-				axes[e->number] = e->value * (180. / 32767.);
+			if((e->type & ~JS_EVENT_INIT) == JS_EVENT_AXIS && e->number<3) {
+				p_sys->axes[e->number] = e->value * (180. / 32767.);
 				fire++;
 			}
-#if DEBUG
+#ifdef DEBUG
 			else
-				msg_Info(p_sys->libvlc, "unknown js event %9d %04X %02X %d %p\n", e->time, e->value, e->type, e->number, axes);
+				msg_Info(p_sys->libvlc, "unknown js event %9d %04X %02X %d %p\n", e->time, e->value, e->type, e->number, p_sys->axes);
 #endif
 		}
 		if(fire) {
-			var_SetAddress(p_sys->libvlc, "head-rotation", axes);
+			var_SetAddress(p_sys->libvlc, "head-rotation", p_sys->axes);
 		}
 	}
-	return 1;	
+	return 1;
 }
 
 static void* query(void *p)
@@ -285,6 +285,7 @@ static int Open( vlc_object_t *p_this )
     p_sys->hidHandle = NULL;
     p_sys->jsDevice = -1;
     p_sys->running = 0;
+    p_sys->axes[0] = p_sys->axes[1] = p_sys->axes[2] = 0;
 
 	/* start HID discovery timer */
 	res = vlc_timer_create(&p_sys->discoveryTimer, &discovery, p_sys);

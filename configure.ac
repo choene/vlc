@@ -4150,7 +4150,7 @@ AS_IF([test "${enable_osx_notifications}" != "no"], [
 dnl
 dnl  NetCDF library for SOFAlizer plugin
 dnl
-PKG_ENABLE_MODULES_VLC([SOFALIZER], [], [netcdf >= 4.1.1], [netcdf support for sofalizer module], [auto])
+PKG_ENABLE_MODULES_VLC([SOFALIZER], [], [netcdf >= 4.1.1 openal >= 1.14.2 hidapi-hidraw], [netcdf support for sofalizer module], [auto])
 
 dnl
 dnl Libnotify notification plugin
