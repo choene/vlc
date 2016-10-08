@@ -1430,7 +1430,7 @@ Sofalizer::Sofalizer( intf_thread_t *p_intf, QWidget *parent )
     i_smallfont = -1;
     const FilterSliderData::slider_data_t a[1] =
     {
-        { "sofalizer-radius",  qtr("Distance to loudspeakers"),   qtr("m"), 0.1f , 6.1f, 1.0f, 0.1f, 1.0f },
+        { "sofalizer-radius",  qtr("Distance to loudspeakers"),   qtr("m"), 0.1f , 6.0f, 1.0f, 0.1f, 1.0f },
     };
     for( int i=0; i<1 ;i++ ) controls.append( a[i] );
 

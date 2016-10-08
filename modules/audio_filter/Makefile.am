@@ -37,7 +37,7 @@ libsofalizer_plugin_la_SOURCES = \
         audio_filter/sofalizer/resampling/samplerate.c \
         audio_filter/sofalizer/resampling/src_linear.c \
         audio_filter/sofalizer/resampling/src_zoh.c
-libsofalizer_plugin_la_LIBADD = $(LIBM) -lnetcdf
+libsofalizer_plugin_la_LIBADD = $(LIBM) -lopenal
 
 
 audio_filter_LTLIBRARIES = \
