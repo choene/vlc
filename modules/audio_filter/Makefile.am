@@ -31,13 +31,8 @@ libspatializer_plugin_la_SOURCES = \
 libspatializer_plugin_la_LIBADD = $(LIBM)
 
 libsofalizer_plugin_la_SOURCES = \
-        audio_filter/sofalizer/sofalizer.c \
-        audio_filter/sofalizer/fft/kiss_fft.c \
-        audio_filter/sofalizer/resampling/src_sinc.c \
-        audio_filter/sofalizer/resampling/samplerate.c \
-        audio_filter/sofalizer/resampling/src_linear.c \
-        audio_filter/sofalizer/resampling/src_zoh.c
-libsofalizer_plugin_la_LIBADD = $(LIBM) -lopenal
+        audio_filter/sofalizer/sofalizer.c
+libsofalizer_plugin_la_LIBADD = $(LIBM) $(LIBOPENAL)
 
 
 audio_filter_LTLIBRARIES = \
