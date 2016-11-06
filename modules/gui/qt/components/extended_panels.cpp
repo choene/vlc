@@ -1428,14 +1428,65 @@ Sofalizer::Sofalizer( intf_thread_t *p_intf, QWidget *parent )
     : AudioFilterControlWidget( p_intf, parent, "sofalizer" )
 {
     i_smallfont = -1;
-    const FilterSliderData::slider_data_t a[1] =
+    const FilterSliderData::slider_data_t a[2] =
     {
         { "sofalizer-radius",  qtr("Distance to loudspeakers"),   qtr("m"), 0.1f , 6.0f, 1.0f, 0.1f, 1.0f },
+        { "sofalizer-hrtf",  qtr("HRTF index"), "", 1.f , 6.0f, 1.0f, 1.f, 1.0f },
     };
-    for( int i=0; i<1 ;i++ ) controls.append( a[i] );
+    for( int i=0; i<2 ;i++ ) controls.append( a[i] );
 
     build();
 }
+
+#if 0
+
+
+    SETUP_VFILTER( hrtf )
+    SETUP_VFILTER_OPTION( logoFileText, editingFinished() )
+    SETUP_VFILTER_OPTION( logoYSpin, valueChanged( int ) )
+    SETUP_VFILTER_OPTION( logoXSpin, valueChanged( int ) )
+    SETUP_VFILTER_OPTION( logoOpacitySlider, valueChanged( int ) )
+    BUTTONACT( ui.logoBrowseBtn, browseLogo() );
+
+    SETUP_VFILTER( transform )
+    SETUP_VFILTER_OPTION( transformTypeCombo, currentIndexChanged( QString ) )
+
+
+void Sofalizer::browseHRTF()
+{
+    QString file = QFileDialog::getOpenFileName( NULL, qtr( "HRTF filenames" ),
+                   p_intf->p_sys->filepath, "HRTFs (*.sofa *.mhr);;All (*)" );
+
+    UPDATE_AND_APPLY_TEXT( hrtfFileText, file );
+}
+
+
+    /* Add the listed presets */
+    ui.presetsCombo->addItem( "", QVariant() ); /* 1st entry = custom/modified */
+    for( i = 0 ; i < NB_PRESETS ; i ++ )
+    {
+        QGraphicsScene scene;
+        QPixmap icon( 40, 40 );
+        icon.fill( Qt::transparent );
+        QPainter painter( &icon );
+        for ( int j = 0; j < eqz_preset_10b[i].i_band; j++ )
+        {
+            float f_value = eqz_preset_10b[i].f_amp[j];
+            if ( f_value > 20.0 ) f_value = 20.0;
+            if ( f_value < -20.0 ) f_value = -20.0;
+            QRectF shape( j, 20.0 - f_value, 1, f_value );
+            scene.addRect( shape, QPen(), palette().brush( QPalette::WindowText ) );
+        }
+        scene.addLine( 0.0, 20.0, eqz_preset_10b[i].i_band, 20.0,
+                       palette().color( QPalette::WindowText ) );
+        scene.setSceneRect( 0.0, 0.0, eqz_preset_10b[i].i_band , 40.0 );
+        scene.render( &painter, icon.rect(), scene.sceneRect(), Qt::IgnoreAspectRatio );
+        ui.presetsCombo->addItem( icon, qtr( preset_list_text[i] ),
+                                     QVariant( preset_list[i] ) );
+    }
+    CONNECT( ui.presetsCombo, activated(int), this, setCorePreset(int) );
+#endif
+
 
 #include <QToolButton>
 #include <QGridLayout>

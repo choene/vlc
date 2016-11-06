@@ -96,6 +96,7 @@ struct filter_sys_t /* field of struct filter_t, which describes the filter */
     /* - from GUI: */
     float axes[3]; /* filter gain (in dB) */
     float f_radius; /* distance virtual loudspeakers to listener (in metres) */
+    int i_hrtf; /* index of the HRTF */
     bool b_mute; /* mutes audio output if set to true */
 
     /* OpenAL */
@@ -141,13 +142,19 @@ static void setSourcePositions(filter_sys_t *p_sys);
 #define RADIUS_VALUE_TEXT N_( "Radius (in m)")
 #define RADIUS_VALUE_LONGTEXT N_( "Varies the distance between the loudspeakers and the listener with near-field HRTFs." )
 
+#define HRTF_VALUE_TEXT N_( "HRTF index")
+#define HRTF_VALUE_LONGTEXT N_( "Index of head related transfer function." )
+
 vlc_module_begin ()
-    set_description( "3D Audio" )
-    set_shortname( "3Daudio" )
+    set_description( "sofalizer" )
+    set_shortname( "sofalizer" )
     set_capability( "audio filter", 0)
     set_help( HELP_TEXT )
-    add_float_with_range( "3D-audio-radius", 1, 0, 2.1,  RADIUS_VALUE_TEXT, RADIUS_VALUE_LONGTEXT, false )
-    add_shortcut( "3D Audio" )
+    add_float_with_range( "sofalizer-radius", 1, 0, 2.1,  RADIUS_VALUE_TEXT, RADIUS_VALUE_LONGTEXT, false )
+    add_float_with_range( "sofalizer-hrtf", 1, 1, 5,  RADIUS_VALUE_TEXT, RADIUS_VALUE_LONGTEXT, false )
+    add_loadfile( "sofalizer-file", NULL, "load", "loadlonger", false ) 
+
+    add_shortcut( "sofalizer" )
     set_category( CAT_AUDIO )
     set_subcategory( SUBCAT_AUDIO_AFILTER )
     set_callbacks( Open, Close )
@@ -198,6 +205,23 @@ static int RadiusCallback( vlc_object_t *UNUSED(p_this), char const *psz_var,
     return VLC_SUCCESS;
 }
 
+static int HrtfCallback( vlc_object_t *UNUSED(p_this), char const *psz_var,
+                          vlc_value_t oldval, vlc_value_t newval, void *pf_data )
+{
+    VLC_UNUSED(psz_var); 
+    VLC_UNUSED(oldval);
+
+    filter_t *p_filter = (filter_t *)pf_data;
+    filter_sys_t *p_sys = p_filter->p_sys;
+
+    vlc_mutex_lock( &p_sys->lock );
+    p_sys->i_hrtf = newval.i_int ;
+    setSourcePositions(p_sys);
+    vlc_mutex_unlock( &p_sys->lock );
+
+    msg_Info( p_filter, "New hrtf index: %ld", newval.i_int );
+    return VLC_SUCCESS;
+}
 
 
 /* tait-bryan */
@@ -474,9 +498,11 @@ static int Open( vlc_object_t *p_this )
 
     /* get user settings */
     p_sys->f_radius     = var_CreateGetFloat( p_filter->obj.parent, "sofalizer-radius");
+    p_sys->i_hrtf       = var_CreateGetInteger( p_filter->obj.parent, "sofalizer-hrtf");
 
     /* Callbacks can call function LoadData */
     var_AddCallback( p_filter->obj.parent, "sofalizer-radius", RadiusCallback, p_filter );
+    var_AddCallback( p_filter->obj.parent, "sofalizer-hrtf", HrtfCallback, p_filter );
     var_AddCallback( p_filter->obj.libvlc, "head-rotation", HeadRotationCallback, p_filter );
 
 	setSourcePositions(p_sys);
@@ -591,6 +617,7 @@ static void Close( vlc_object_t *p_this )
 
     /* delete GUI callbacks */
     var_DelCallback( p_out, "sofalizer-radius", RadiusCallback, p_filter );
+    var_DelCallback( p_out, "sofalizer-hrtf", HrtfCallback, p_filter );
     var_DelCallback( p_filter->obj.libvlc, "head-rotation", HeadRotationCallback, p_filter );
 
     vlc_mutex_destroy( &p_sys->lock ); /* get rid of mutex lock */

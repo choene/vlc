@@ -32,7 +32,7 @@ libspatializer_plugin_la_LIBADD = $(LIBM)
 
 libsofalizer_plugin_la_SOURCES = \
         audio_filter/sofalizer/sofalizer.c
-libsofalizer_plugin_la_LIBADD = $(LIBM) $(LIBOPENAL)
+libsofalizer_plugin_la_LIBADD = $(LIBM) -lopenal -lpthread
 
 
 audio_filter_LTLIBRARIES = \

@@ -17,10 +17,10 @@ libopenal: openal-soft-$(OPENAL_VERSION).tar.bz2 .sum-openal
 	$(UNPACK)
 	$(MOVE)
 
-DEPS_libopenal = 
+DEPS_libopenal = pthreads $(DEPS_pthreads)
 
 .openal: libopenal toolchain.cmake
-	cd $< && $(HOSTVARS) $(CMAKE) \
+	cd $< && $(HOSTVARS_PIC) $(CMAKE) \
 		-DALSOFT_DLOPEN=OFF -DALSOFT_UTILS=OFF -DALSOFT_NO_CONFIG_UTIL=ON \
 		-DALSOFT_EXAMPLES=OFF -DALSOFT_TESTS=OFF -DALSOFT_CONFIG=OFF \
 		-DALSOFT_HRTF_SOFA=OFF -DALSOFT_AMBDEC_PRESETS=OFF -DALSOFT_HRTF_DEFS=OFF \
@@ -30,12 +30,12 @@ DEPS_libopenal =
 		-DALSOFT_BACKEND_MMDEVAP=OFF -DALSOFT_BACKEND_PORTAUDIO=OFF \
 		-DALSOFT_BACKEND_PULSEAUDIO=OFF -DALSOFT_BACKEND_JACK=OFF \
 		-DALSOFT_REQUIRE_COREAUDIO=OFF -DALSOFT_BACKEND_OPENSL=OFF \
-		-DALSOFT_BACKEND_WAVE=OFF 
+		-DALSOFT_BACKEND_WAVE=OFF -DLIBTYPE=STATIC 
 	cd $< && $(MAKE)
 	mkdir -p -- "$(PREFIX)/include"
 	cd $< && cp -vr include/AL "$(PREFIX)/include/"
 	mkdir -p -- "$(PREFIX)/lib"
-	cp -vf $</*.so "$(PREFIX)/lib/" || cp -vf $</*.dll "$(PREFIX)/lib/"
+	cp -vf $</*.a "$(PREFIX)/lib/" || cp -vf $</*.dll "$(PREFIX)/lib/"
 	touch $@	
 
 
