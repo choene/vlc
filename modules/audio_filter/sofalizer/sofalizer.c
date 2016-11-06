@@ -233,10 +233,10 @@ static void rotate(float *pos, float *axes)
 	ny = y * cos - z * sin;
 	nz = y * sin + z * cos;
 
-	printf("rotate %f %f %f with %f %f %f to %f %f %f\n", pos[2], pos[0], pos[1], axes[0], axes[1], axes[2], x, y, z);
-	pos[2] = x;
-	pos[0] = y;
-	pos[1] = z;
+	printf("rotate %f %f %f with %f %f %f to %f %f %f\n", pos[2], pos[0], pos[1], axes[0], axes[1], axes[2], nx, ny, nz);
+	pos[2] = nx;
+	pos[0] = ny;
+	pos[1] = nz;
 }
 
 /*****************************************************************************
