@@ -8,6 +8,8 @@ $(TARBALLS)/openal-soft-$(OPENAL_VERSION).tar.bz2:
 ifeq ($(call need_pkg,"openal"),)
 PKGS_FOUND += openal
 endif
+PKGS += openal
+
 
 .sum-openal: openal-soft-$(OPENAL_VERSION).tar.bz2
 
@@ -30,6 +32,10 @@ DEPS_libopenal =
 		-DALSOFT_REQUIRE_COREAUDIO=OFF -DALSOFT_BACKEND_OPENSL=OFF \
 		-DALSOFT_BACKEND_WAVE=OFF 
 	cd $< && $(MAKE)
+	mkdir -p -- "$(PREFIX)/include"
+	cd $< && cp -vr include/AL "$(PREFIX)/include/"
+	mkdir -p -- "$(PREFIX)/lib"
+	cp -vf $</*.so "$(PREFIX)/lib/" || cp -vf $</*.dll "$(PREFIX)/lib/"
 	touch $@	
 
 
